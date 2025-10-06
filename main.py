@@ -35,7 +35,7 @@ async def originate_call(request: CallRequest):
         # This example assumes a SIP profile named 'internal'.
         originate_string = (
             f"bgapi originate {{origination_caller_id_number={request.caller_id}}}"
-            f"sofia/internal/{request.phone_number} &park"
+            f"sofia/internal/{request.phone_number}%34.228.63.97 &park"
         )
         
         # Send the command to FreeSWITCH
