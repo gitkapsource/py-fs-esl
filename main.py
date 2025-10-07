@@ -1,3 +1,4 @@
+import uuid
 from freeswitchESL import ESL
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -19,43 +20,48 @@ class CallRequest(BaseModel):
 
 @app.post("/originate-call")
 async def originate_call(request: CallRequest):
-    """
-    Initiates a new call through FreeSWITCH.
-    """
-    try:
-        # Establish ESL connection
-        esl_conn = ESL.ESLconnection(FS_HOST, FS_PORT, FS_PASSWORD)
-        
-        if not esl_conn.connected():
-            raise RuntimeError("Could not connect to FreeSWITCH ESL.")
+	"""
+	Initiates a new call through FreeSWITCH.
+	"""
+	try:
 
-        # Construct the originate command.
-        # This example uses a simple bridge to a destination.
-        # The exact string will depend on your FreeSWITCH dialplan and setup.
-        # This example assumes a SIP profile named 'internal'.
-        originate_string = (
-            f"bgapi originate {{origination_caller_id_number={request.caller_id}}}"
-            f"sofia/internal/{request.phone_number}%34.228.63.97 &park"
-        )
+		# Create a new UUID for the call's originating leg
+		origination_uuid = str(uuid.uuid4())
+
+		# Establish ESL connection
+		esl_conn = ESL.ESLconnection(FS_HOST, FS_PORT, FS_PASSWORD)
         
-        # Send the command to FreeSWITCH
-        esl_conn.bgapi(originate_string)
-        
-        # FreeSWITCH ESL uses a background API, so we get an immediate response
-        # about the command submission, not the call status itself.
-        # For a full call flow, you would monitor events.
-        return {
-            "status": "success",
-            "message": "Call originate command sent to FreeSWITCH.",
-            "phone_number": request.phone_number,
-            "caller_id": request.caller_id
-        }
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"An error occurred while trying to originate the call: {e}"
-        )
+		if not esl_conn.connected():
+			raise RuntimeError("Could not connect to FreeSWITCH ESL.")
+
+		# Construct the originate command.
+		# This example uses a simple bridge to a destination.
+		# The exact string will depend on your FreeSWITCH dialplan and setup.
+		# This example assumes a SIP profile named 'internal'.
+
+		originate_string = (
+			f"bgapi originate {{origination_uuid={origination_uuid},origination_caller_id_number={request.caller_id}}}"
+			f"sofia/internal/{request.phone_number}%34.228.63.97 &park"
+		)
+
+		# Send the command to FreeSWITCH
+		esl_response = esl_conn.bgapi(originate_string)
+
+		# FreeSWITCH ESL uses a background API, so we get an immediate response
+		# about the command submission, not the call status itself.
+		# For a full call flow, you would monitor events.
+
+		return{
+			"status": "success",
+			"message": "Call originated successfully in the background.",
+			"origination_uuid": origination_uuid
+		}
+
+	except Exception as e:
+		raise HTTPException(
+		status_code=500, 
+		detail=f"An error occurred while trying to originate the call: {e}"
+		)
 
 # Health check endpoint
 @app.get("/")
